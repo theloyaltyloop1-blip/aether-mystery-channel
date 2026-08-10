@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+client_secret.json
+token.json
+assets/*
+!assets/used_topics.json
+*.log
+review_frames/

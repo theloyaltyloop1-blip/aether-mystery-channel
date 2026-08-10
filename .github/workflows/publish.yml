@@ -1,0 +1,74 @@
+name: AETHER publish
+
+# Cron times are UTC. These correspond to 00:00, 03:00, 06:00, 09:00, 12:00,
+# 15:00, 18:00, 21:00 in UK time while British Summer Time (UTC+1) is in
+# effect. When the clocks go back to GMT in autumn, local times will shift
+# an hour earlier until adjusted.
+on:
+  schedule:
+    - cron: "0 23 * * *"
+    - cron: "0 2 * * *"
+    - cron: "0 5 * * *"
+    - cron: "0 8 * * *"
+    - cron: "0 11 * * *"
+    - cron: "0 14 * * *"
+    - cron: "0 17 * * *"
+    - cron: "0 20 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ollama-models-llama3.2-3b
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and pull model
+        run: |
+          ollama serve &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/version && break
+            sleep 1
+          done
+          ollama pull llama3.2:3b
+
+      - name: Restore YouTube credentials
+        run: |
+          printf '%s' "$CLIENT_SECRET_JSON" > client_secret.json
+          printf '%s' "$TOKEN_JSON" > token.json
+        env:
+          CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_JSON }}
+          TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+
+      - name: Run AETHER publish
+        run: python auto_publish.py
+
+      - name: Persist used-topics log
+        run: |
+          git config user.name "AETHER bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add assets/used_topics.json
+          git diff --cached --quiet || git commit -m "chore: update used topics"
+          git push

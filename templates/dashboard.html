@@ -1,0 +1,293 @@
+<!doctype html>
+<html>
+<head>
+<title>AETHER</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at 50% 30%, #0d1c3a 0%, #060a16 55%, #030509 100%);
+    color:#dfe6f5; font-family: -apple-system, "Segoe UI", sans-serif; overflow-x:hidden;
+  }
+  #stars, #stars2 {
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-repeat: repeat;
+  }
+
+  /* top bar */
+  .topbar {
+    position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between;
+    padding:14px 28px; border-bottom:1px solid #1a2740; backdrop-filter: blur(4px);
+  }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand .dot { width:10px; height:10px; border-radius:50%; background:#4fd1ff; box-shadow:0 0 12px 3px #4fd1ff; animation: pulse 2.4s ease-in-out infinite; }
+  .brand span { font-size:20px; font-weight:700; letter-spacing:3px; color:#eaf2ff; }
+  .stats { display:flex; gap:26px; font-size:12px; color:#8ea2c4; }
+  .stats b { display:block; color:#eaf2ff; font-size:15px; font-weight:600; }
+
+  /* orbit */
+  .orbit-wrap { position:relative; z-index:1; width:100%; max-width:760px; aspect-ratio:1/1; margin: 10px auto 0; }
+  .ring { position:absolute; border:1px solid #1c2b4a; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); }
+  .ring.r1 { width:34%; height:34%; }
+  .ring.r2 { width:62%; height:62%; }
+  .ring.r3 { width:92%; height:92%; }
+
+  .center-node {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:15%; aspect-ratio:1/1; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #bfe9ff, #4fd1ff 40%, #1560c9 80%);
+    box-shadow: 0 0 40px 10px rgba(79,209,255,0.45), 0 0 90px 30px rgba(79,209,255,0.15);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:13px; letter-spacing:2px; color:#04101f;
+    animation: pulse 3s ease-in-out infinite;
+    z-index:3;
+  }
+
+  .spoke { position:absolute; top:50%; left:50%; height:1px; background:linear-gradient(90deg, rgba(79,209,255,0.5), rgba(79,209,255,0)); transform-origin:0 0; z-index:1; }
+
+  .node {
+    position:absolute; width:66px; height:66px; transform:translate(-50%,-50%);
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    background: linear-gradient(160deg, #16233f, #0a1224);
+    border:1px solid #2a3d63; color:#9db3d9; font-size:10px; font-weight:600;
+    transition: all .4s ease; cursor:default; z-index:2;
+  }
+  .node .icon { font-size:20px; line-height:1; margin-bottom:2px; }
+  .node .label { position:absolute; top:calc(100% + 6px); white-space:nowrap; font-size:11px; color:#7488ac; letter-spacing:0.5px; }
+  .node .state { position:absolute; bottom:-18px; white-space:nowrap; font-size:9px; color:#4a5a7a; }
+
+  .node.active {
+    border-color: var(--c); color:#fff;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 35%, #0a1224), #0a1224 70%);
+    box-shadow: 0 0 22px 4px color-mix(in srgb, var(--c) 55%, transparent), 0 0 50px 14px color-mix(in srgb, var(--c) 25%, transparent);
+    animation: nodepulse 1.4s ease-in-out infinite;
+  }
+  .node.done { border-color:#22c55e; color:#22c55e; }
+
+  @keyframes pulse { 0%,100% { filter:brightness(1); } 50% { filter:brightness(1.25); } }
+  @keyframes nodepulse { 0%,100% { transform:translate(-50%,-50%) scale(1); } 50% { transform:translate(-50%,-50%) scale(1.08); } }
+
+  /* console */
+  .console { position:relative; z-index:2; max-width:760px; margin: 30px auto 0; padding: 0 20px; }
+  .askbar { display:flex; gap:8px; background:#0c1428; border:1px solid #223151; border-radius:10px; padding:6px; }
+  .askbar input[type=text] { flex:1; background:transparent; border:none; outline:none; color:#eaf2ff; font-size:14px; padding:10px 12px; }
+  .askbar label { display:flex; align-items:center; gap:6px; color:#7488ac; font-size:12px; padding:0 8px; white-space:nowrap; }
+  .askbar button { background:#2563eb; border:none; color:white; font-weight:600; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .askbar button:disabled { opacity:.5; cursor:not-allowed; }
+  .warn { background:#241a08; border:1px solid #5a3d10; color:#f5c876; padding:10px 14px; border-radius:8px; font-size:12px; margin: 14px auto; max-width:760px; }
+
+  /* panels */
+  .panels { position:relative; z-index:2; max-width:760px; margin: 26px auto 60px; padding:0 20px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .panel { background:#0c1428; border:1px solid #1c2b4a; border-radius:10px; padding:14px 16px; }
+  .panel h3 { margin:0 0 10px; font-size:11px; letter-spacing:1.5px; color:#7488ac; text-transform:uppercase; }
+  .sched-row { display:flex; justify-content:space-between; font-size:12px; color:#b7c4e0; padding:5px 0; border-bottom:1px solid #16223d; }
+  .sched-row:last-child { border-bottom:none; }
+  .sched-row .next { color:#4fd1ff; font-weight:600; }
+
+  .job { background:#0c1428; border:1px solid #1c2b4a; border-radius:10px; padding:12px 16px; margin-bottom:9px; }
+  .job .topic { font-weight:600; font-size:13px; color:#eaf2ff; }
+  .job .meta { color:#7488ac; font-size:11px; margin-top:4px; }
+  .status-running { color:#f5a623; }
+  .status-done { color:#22c55e; }
+  .status-error { color:#ef4444; }
+  a { color:#4fd1ff; }
+  .full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<div id="stars"></div>
+
+<div class="topbar">
+  <div class="brand"><div class="dot"></div><span>AETHER</span></div>
+  <div class="stats">
+    <div>Videos<b id="statTotal">0</b></div>
+    <div>Uploaded<b id="statUploaded">0</b></div>
+    <div>Scheduled<b>8/day</b></div>
+    <div>Next Run<b id="statNext">--:--</b></div>
+  </div>
+</div>
+
+{% if not has_youtube_creds %}
+<div class="warn">YouTube upload isn't set up yet (no client_secret.json found) - videos will generate but wonl't upload until you add it.</div>
+{% endif %}
+
+<div class="orbit-wrap" id="orbit">
+  <div class="ring r1"></div>
+  <div class="ring r2"></div>
+  <div class="ring r3"></div>
+  <div class="center-node">AETHER</div>
+</div>
+
+<div class="console">
+  <form id="genForm">
+    <div class="askbar">
+      <input type="text" id="topic" name="topic" placeholder="Ask AETHER anything, or say 'make a short about Flight 19'" required>
+      <label><input type="checkbox" id="upload" {% if not has_youtube_creds %}disabled{% endif %} checked> Publish public Short</label>
+      <button type="submit" id="genBtn">Generate</button>
+    </div>
+  </form>
+</div>
+
+<div class="panels">
+  <div class="panel">
+    <h3>Background Tasks</h3>
+    <div class="sched-row"><span>Daily Production Run 1</span><span>00:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 2</span><span>03:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 3</span><span>06:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 4</span><span>09:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 5</span><span>12:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 6</span><span>15:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 7</span><span>18:00</span></div>
+    <div class="sched-row"><span>Daily Production Run 8</span><span>21:00</span></div>
+  </div>
+  <div class="panel">
+    <h3>Pipeline Agents</h3>
+    <div class="sched-row"><span>Athena</span><span>topic strategy</span></div>
+    <div class="sched-row"><span>Atlas</span><span>script writing</span></div>
+    <div class="sched-row"><span>Argus</span><span>footage sourcing</span></div>
+    <div class="sched-row"><span>Dionysus</span><span>narration</span></div>
+    <div class="sched-row"><span>Hephaestus</span><span>video assembly</span></div>
+    <div class="sched-row"><span>Apollo</span><span>publishing</span></div>
+  </div>
+  <div class="panel full">
+    <h3>Production Log</h3>
+    <div id="jobs"></div>
+  </div>
+</div>
+
+<script>
+// starfield
+(function() {
+  const layer = document.getElementById('stars');
+  let shadows = [];
+  for (let i = 0; i < 140; i++) {
+    shadows.push(`${Math.random()*100}vw ${Math.random()*100}vh #ffffff`);
+  }
+  layer.style.width = '2px'; layer.style.height = '2px'; layer.style.borderRadius='50%';
+  layer.style.boxShadow = shadows.join(',');
+  layer.style.opacity = '0.5';
+})();
+
+const AGENTS = [
+  { key: 'athena',     icon: '◈', label: 'Athena' },
+  { key: 'atlas',       icon: '✎', label: 'Atlas' },
+  { key: 'argus',       icon: '◉', label: 'Argus' },
+  { key: 'dionysus',    icon: '♫', label: 'Dionysus' },
+  { key: 'hephaestus',  icon: '⚙', label: 'Hephaestus' },
+  { key: 'apollo',      icon: '▲', label: 'Apollo' },
+  { key: 'hermes',      icon: '⧖', label: 'Hermes' },
+  { key: 'iris',        icon: '✱', label: 'Iris' },
+];
+const AGENT_COLORS = {
+  athena:'#4fd1ff', atlas:'#a78bfa', argus:'#f59e0b', dionysus:'#f472b6',
+  hephaestus:'#fb923c', apollo:'#22c55e', hermes:'#38bdf8', iris:'#e879f9'
+};
+const STEP_TO_AGENT = {
+  'writing script': 'atlas',
+  'fetching footage': 'argus',
+  'generating voiceover': 'dionysus',
+  'assembling video': 'hephaestus',
+  'uploading to YouTube': 'apollo',
+};
+
+function buildOrbit() {
+  const wrap = document.getElementById('orbit');
+  const radiusPct = 46;
+  AGENTS.forEach((agent, i) => {
+    const angle = (i / AGENTS.length) * 2 * Math.PI - Math.PI/2;
+    const x = 50 + radiusPct * Math.cos(angle);
+    const y = 50 + radiusPct * Math.sin(angle);
+
+    const spoke = document.createElement('div');
+    const lengthPct = radiusPct;
+    spoke.className = 'spoke';
+    spoke.style.width = lengthPct + '%';
+    spoke.style.transform = `rotate(${angle}rad)`;
+    wrap.appendChild(spoke);
+
+    const node = document.createElement('div');
+    node.className = 'node';
+    node.id = 'node-' + agent.key;
+    node.style.left = x + '%';
+    node.style.top = y + '%';
+    node.style.setProperty('--c', AGENT_COLORS[agent.key]);
+    node.innerHTML = `<div class="icon">${agent.icon}</div>${agent.label}<div class="label"></div><div class="state" id="state-${agent.key}">idle</div>`;
+    wrap.appendChild(node);
+  });
+}
+buildOrbit();
+
+function setActive(agentKey) {
+  AGENTS.forEach(a => {
+    const el = document.getElementById('node-' + a.key);
+    const state = document.getElementById('state-' + a.key);
+    el.classList.remove('active');
+    if (a.key === agentKey) {
+      el.classList.add('active');
+      state.textContent = 'working';
+    } else {
+      state.textContent = 'idle';
+    }
+  });
+  if (!agentKey) AGENTS.forEach(a => document.getElementById('state-'+a.key).textContent = 'idle');
+}
+
+function nextRunLabel() {
+  const times = [0,3,6,9,12,15,18,21];
+  const now = new Date();
+  for (const h of times) {
+    const t = new Date(now); t.setHours(h,0,0,0);
+    if (t > now) return t.toTimeString().slice(0,5);
+  }
+  const t = new Date(now); t.setDate(t.getDate()+1); t.setHours(times[0],0,0,0);
+  return t.toTimeString().slice(0,5) + ' (tmrw)';
+}
+document.getElementById('statNext').textContent = nextRunLabel();
+setInterval(() => { document.getElementById('statNext').textContent = nextRunLabel(); }, 30000);
+
+async function refresh() {
+  const res = await fetch('/api/jobs');
+  const jobs = await res.json();
+
+  document.getElementById('statTotal').textContent = jobs.length;
+  document.getElementById('statUploaded').textContent = jobs.filter(j => j.youtube_url).length;
+
+  const running = jobs.find(j => j.status === 'running');
+  setActive(running ? STEP_TO_AGENT[running.step] : null);
+
+  const container = document.getElementById('jobs');
+  container.innerHTML = jobs.slice(0, 12).map(j => `
+    <div class="job">
+      <div class="topic">${j.topic}</div>
+      <div class="meta status-${j.status}">
+        ${j.status === 'running' ? 'Working: ' + j.step + '...' : ''}
+        ${j.status === 'done' ? 'Done - ' + j.created_at : ''}
+        ${j.status === 'error' ? 'Error: ' + j.error : ''}
+      </div>
+      ${j.youtube_url ? `<div class="meta"><a href="${j.youtube_url}" target="_blank">${j.youtube_url}</a></div>` : ''}
+    </div>
+  `).join('');
+}
+
+document.getElementById('genForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const topic = document.getElementById('topic').value;
+  const upload = document.getElementById('upload').checked;
+  document.getElementById('genBtn').disabled = true;
+  await fetch('/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({topic, upload})
+  });
+  document.getElementById('topic').value = '';
+  document.getElementById('genBtn').disabled = false;
+  refresh();
+});
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
