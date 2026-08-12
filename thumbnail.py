@@ -13,7 +13,14 @@ import textwrap
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1280, 720
-FONT_PATH = "C:/Windows/Fonts/impact.ttf"
+
+# Impact isn't available on the Ubuntu GitHub Actions runner - fall back to
+# a bold sans that's preinstalled there so cloud runs don't crash.
+_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/impact.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+]
+FONT_PATH = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), _FONT_CANDIDATES[-1])
 OUT_DIR = os.path.join(os.path.dirname(__file__), "assets", "thumbnails")
 
 
@@ -72,6 +79,14 @@ def generate_thumbnail(topic: str, scenes: list[dict]) -> str | None:
     font_size = 92 if len(lines) <= 2 else 72
     font = ImageFont.truetype(FONT_PATH, font_size)
     line_gap = 10
+
+    # DejaVu Bold (the Linux fallback) is noticeably wider than Impact -
+    # shrink to fit rather than letting long lines run off the edges
+    max_line_w = max(draw.textlength(line, font=font) for line in lines)
+    while max_line_w > W - 80 and font_size > 40:
+        font_size -= 4
+        font = ImageFont.truetype(FONT_PATH, font_size)
+        max_line_w = max(draw.textlength(line, font=font) for line in lines)
 
     line_heights = [draw.textbbox((0, 0), line, font=font)[3] for line in lines]
     total_h = sum(line_heights) + line_gap * (len(lines) - 1)

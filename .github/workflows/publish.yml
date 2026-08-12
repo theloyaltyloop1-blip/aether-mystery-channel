@@ -1,19 +1,16 @@
 name: AETHER publish
 
-# Cron times are UTC. These correspond to 00:00, 03:00, 06:00, 09:00, 12:00,
-# 15:00, 18:00, 21:00 in UK time while British Summer Time (UTC+1) is in
-# effect. When the clocks go back to GMT in autumn, local times will shift
-# an hour earlier until adjusted.
+# Cron times are UTC. These correspond to 00:00, 06:00, 12:00, 18:00 in UK
+# time while British Summer Time (UTC+1) is in effect. When the clocks go
+# back to GMT in autumn, local times will shift an hour earlier until
+# adjusted. This is now the ONLY scheduler for AETHER - the local Windows
+# Task Scheduler jobs were disabled to avoid two sources publishing at once.
 on:
   schedule:
     - cron: "0 23 * * *"
-    - cron: "0 2 * * *"
     - cron: "0 5 * * *"
-    - cron: "0 8 * * *"
     - cron: "0 11 * * *"
-    - cron: "0 14 * * *"
     - cron: "0 17 * * *"
-    - cron: "0 20 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -30,8 +27,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install ffmpeg and fonts
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
 
       - name: Install Python deps
         run: pip install -r requirements.txt

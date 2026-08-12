@@ -28,7 +28,14 @@ ZOOM_RANGE = 0.06  # total zoom over the clip's duration
 SR = 24000  # ambient bed sample rate - narration quality doesn't need more
 OUT_DIR = os.path.join(os.path.dirname(__file__), "assets", "output")
 FALLBACK_IMAGE = os.path.join(os.path.dirname(__file__), "assets", "fallback.jpg")
-FONT_PATH = "C:/Windows/Fonts/segoeuib.ttf"
+
+# this pipeline runs both on Windows (locally) and Ubuntu (GitHub Actions) -
+# hardcoding a Windows font path silently breaks every cloud run
+_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/segoeuib.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+]
+FONT_PATH = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), _FONT_CANDIDATES[-1])
 
 
 def ken_burns_clip(image_path: str, duration: float) -> VideoClip:
