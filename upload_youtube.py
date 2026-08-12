@@ -21,7 +21,10 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 BASE_DIR = os.path.dirname(__file__)
 CLIENT_SECRET_FILE = os.path.join(BASE_DIR, "client_secret.json")
 TOKEN_FILE = os.path.join(BASE_DIR, "token.json")
@@ -70,6 +73,19 @@ def upload_video(video_path: str, title: str, description: str, tags: list[str],
             print(f"Upload progress: {int(status.progress() * 100)}%", file=sys.stderr)
 
     return response["id"]
+
+
+def set_thumbnail(video_id: str, thumbnail_path: str) -> None:
+    """Best-effort - custom thumbnails require the channel to be verified,
+    so this logs and moves on rather than failing the whole publish if it's
+    rejected."""
+    try:
+        creds = get_credentials()
+        youtube = build("youtube", "v3", credentials=creds)
+        media = MediaFileUpload(thumbnail_path, mimetype="image/jpeg")
+        youtube.thumbnails().set(videoId=video_id, media_body=media).execute()
+    except Exception as e:
+        print(f"Custom thumbnail upload failed (non-fatal): {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

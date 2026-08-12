@@ -7,7 +7,6 @@ everything already used.
 """
 import json
 import os
-import random
 import requests
 
 USED_TOPICS_FILE = os.path.join(os.path.dirname(__file__), "assets", "used_topics.json")
@@ -79,13 +78,23 @@ def pick_topic() -> str:
     remaining = [t for t in SEED_TOPICS if t not in used]
 
     if remaining:
-        topic = random.choice(remaining)
+        # Stable ordering keeps the dashboard preview and actual upload aligned.
+        topic = remaining[0]
     else:
         topic = _invent_topic(used)
 
     used.append(topic)
     _save_used(used)
     return topic
+
+
+def preview_topics(count: int = 8) -> list[str]:
+    """Return upcoming topics without reserving or marking them as used."""
+    used = _load_used()
+    remaining = [t for t in SEED_TOPICS if t not in used]
+    preview = remaining[:count]
+    preview.extend(["AETHER discovery topic"] * (count - len(preview)))
+    return preview
 
 
 if __name__ == "__main__":

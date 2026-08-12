@@ -3,7 +3,16 @@ __pycache__/
 *.pyc
 client_secret.json
 token.json
+tiktok_secrets.json
+tiktok_token.json
 assets/*
 !assets/used_topics.json
+!assets/fallback.jpg
+!assets/image_blocklist.json
 *.log
 review_frames/
+reference_frames/
+for_tiktok_bulk_upload/
+tiktok_test_input.json
+*TEMP_MPY_wvf_snd.mp4
+app_icon.png
