@@ -12,7 +12,7 @@ import sys
 import wave
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 from moviepy import (
     VideoClip,
     ImageClip,
@@ -20,6 +20,7 @@ from moviepy import (
     CompositeAudioClip,
     CompositeVideoClip,
     concatenate_videoclips,
+    vfx,
 )
 
 W, H = 720, 1280  # vertical, TikTok/YouTube Shorts style - kept modest for fast, cheap rendering
@@ -28,6 +29,33 @@ ZOOM_RANGE = 0.06  # total zoom over the clip's duration
 SR = 24000  # ambient bed sample rate - narration quality doesn't need more
 OUT_DIR = os.path.join(os.path.dirname(__file__), "assets", "output")
 FALLBACK_IMAGE = os.path.join(os.path.dirname(__file__), "assets", "fallback.jpg")
+CROSSFADE = 0.35  # scene-to-scene crossfade, seconds - hard cuts between mismatched
+# stock photos are one of the biggest "cheap slop" tells; a soft blend hides it
+
+# each scene's raw stock photo comes from a different source with wildly
+# different color/contrast - a light unifying grade (+ vignette) makes them
+# read as one graded video instead of a pile of random downloads
+_VIGNETTE_CACHE: dict[tuple[int, int], np.ndarray] = {}
+
+
+def _vignette_mask(w: int, h: int) -> np.ndarray:
+    key = (w, h)
+    if key not in _VIGNETTE_CACHE:
+        yy, xx = np.mgrid[0:h, 0:w]
+        cx, cy = w / 2, h / 2
+        dist = np.sqrt(((xx - cx) / (w / 2)) ** 2 + ((yy - cy) / (h / 2)) ** 2)
+        mask = 1 - np.clip((dist - 0.55) / 0.65, 0, 1) * 0.35
+        _VIGNETTE_CACHE[key] = mask[..., None]
+    return _VIGNETTE_CACHE[key]
+
+
+def _grade_image(img: Image.Image) -> Image.Image:
+    img = ImageEnhance.Contrast(img).enhance(1.10)
+    img = ImageEnhance.Color(img).enhance(1.15)
+    img = ImageEnhance.Brightness(img).enhance(0.97)
+    arr = np.asarray(img).astype(np.float32)
+    arr *= _vignette_mask(img.width, img.height)
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 
 # this pipeline runs both on Windows (locally) and Ubuntu (GitHub Actions) -
 # hardcoding a Windows font path silently breaks every cloud run
@@ -43,7 +71,7 @@ def ken_burns_clip(image_path: str, duration: float) -> VideoClip:
     then produce each frame via plain numpy array slicing (a fixed-size crop
     window sliding across the canvas) - no per-frame resize, which is what
     made rendering slow."""
-    src = Image.open(image_path).convert("RGB")
+    src = _grade_image(Image.open(image_path).convert("RGB"))
 
     margin_scale = 1 + ZOOM_RANGE
     canvas_w, canvas_h = int(W * margin_scale), int(H * margin_scale)
@@ -123,7 +151,35 @@ def caption_card(text: str, max_width: int, style: dict = DEFAULT_STYLE) -> Imag
     return card
 
 
-def word_pop_image(word: str, style: dict = DEFAULT_STYLE) -> Image.Image:
+HIGHLIGHT_COLOR = (255, 196, 40)  # warm gold - the emphasis word per line
+
+_STOPWORDS = {
+    "the", "a", "an", "and", "or", "but", "is", "are", "was", "were", "be", "been",
+    "to", "of", "in", "on", "at", "for", "with", "it", "that", "this", "he", "she",
+    "they", "you", "i", "we", "his", "her", "their", "your", "my", "its", "as", "by",
+    "from", "not", "so", "if", "when", "then", "than", "just", "like", "get", "gets",
+    "got", "do", "does", "did", "have", "has", "had", "will", "would", "can", "could",
+    "should", "one", "because", "what", "how", "who", "which", "there", "here", "up",
+    "down", "out", "all", "some", "more", "most", "own", "only", "also", "even",
+    "still", "way", "into", "every", "same",
+}
+
+
+def _pick_highlight_index(word_timings: list[dict]) -> int | None:
+    """Picks one standout word per line to render in gold, mirroring how the
+    reference video highlights the single word that carries the point of the
+    sentence (a plain wall of same-colored words is what reads as cheap)."""
+    best_i, best_len = None, 0
+    for i, wt in enumerate(word_timings):
+        clean = "".join(ch for ch in wt["text"] if ch.isalpha())
+        if len(clean) < 5 or clean.lower() in _STOPWORDS:
+            continue
+        if len(clean) > best_len:
+            best_i, best_len = i, len(clean)
+    return best_i
+
+
+def word_pop_image(word: str, style: dict = DEFAULT_STYLE, highlight: bool = False) -> Image.Image:
     """One bold word, centered, with a thin dark stroke for legibility over
     any background - the "TikTok caption" look: a single word pops on
     screen in sync with narration instead of a static subtitle card."""
@@ -136,10 +192,10 @@ def word_pop_image(word: str, style: dict = DEFAULT_STYLE) -> Image.Image:
 
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    text_r, text_g, text_b = style["text_color"]
+    fill = HIGHLIGHT_COLOR if highlight else style["text_color"]
     draw.text(
         (pad - bbox[0], pad - bbox[1]), word, font=font,
-        fill=(text_r, text_g, text_b, 255), stroke_width=4, stroke_fill=(0, 0, 0, 220),
+        fill=(*fill, 255), stroke_width=4, stroke_fill=(0, 0, 0, 220),
     )
     return img
 
@@ -154,9 +210,10 @@ def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE) -> CompositeVideo
 
     word_timings = scene.get("word_timings")
     if word_timings:
-        for wt in word_timings:
+        highlight_i = _pick_highlight_index(word_timings)
+        for i, wt in enumerate(word_timings):
             word_dur = max(wt["end"] - wt["start"], 0.05)
-            word_img = np.array(word_pop_image(wt["text"], style=style))
+            word_img = np.array(word_pop_image(wt["text"], style=style, highlight=(i == highlight_i)))
             word_clip = (
                 ImageClip(word_img)
                 .with_start(wt["start"])
@@ -224,7 +281,11 @@ def generate_ambient_bed(duration: float, out_path: str) -> str:
 def assemble(data: dict, style: dict = DEFAULT_STYLE) -> str:
     os.makedirs(OUT_DIR, exist_ok=True)
     clips = [build_scene_clip(scene, style=style) for scene in data["scenes"]]
-    final = concatenate_videoclips(clips, method="compose")
+    # crossfade between scenes instead of hard cuts - mismatched stock photos
+    # cutting straight into each other is one of the biggest "cheap slop" tells
+    fade = min(CROSSFADE, min(c.duration for c in clips) / 2)
+    clips = [clips[0]] + [c.with_effects([vfx.CrossFadeIn(fade)]) for c in clips[1:]]
+    final = concatenate_videoclips(clips, method="compose", padding=-fade)
 
     ambient_path = os.path.join(OUT_DIR, "_ambient_tmp.wav")
     generate_ambient_bed(final.duration, ambient_path)
