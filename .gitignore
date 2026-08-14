@@ -8,7 +8,7 @@ tiktok_token.json
 assets/*
 !assets/used_topics.json
 !assets/used_topics_philosophy.json
-!assets/used_topics_kids.json
+!assets/used_topics_space.json
 !assets/fallback.jpg
 !assets/image_blocklist.json
 *.log

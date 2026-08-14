@@ -1,9 +1,12 @@
 name: AETHER publish - space
 
-# No cron yet - manual dispatch only until this has a successful test run.
-# Once confirmed working, add a schedule: block here like publish-mystery.yml
-# has, offset from the other channels' cron times.
+# 3x/day, offset from mystery (23/5/11/17 UTC) and philosophy (2/10/18 UTC)
+# so all three channels don't grab a runner at the same time.
 on:
+  schedule:
+    - cron: "0 4 * * *"
+    - cron: "0 12 * * *"
+    - cron: "0 20 * * *"
   workflow_dispatch: {}
 
 permissions:
