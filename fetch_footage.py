@@ -29,6 +29,25 @@ FALLBACK_QUERIES = [
     "radio tower silhouette", "storm clouds", "dark road at night",
 ]
 
+# Openverse's "cartoon" tag also covers political caricature art (e.g. a
+# "Republican Clown Car Parade" caricature series ranks highly for "cartoon
+# farm illustration") - block anything whose title/tags suggest politics,
+# violence, or other content that has no business anywhere near any AETHER
+# video, checked on every channel by default.
+UNSAFE_TERMS = {
+    "trump", "biden", "obama", "clinton", "republican", "democrat", "gop", "rnc", "dnc",
+    "election", "senator", "congress", "politician", "political", "caricature", "satire",
+    "protest", "president", "nazi", "hitler", "isis", "terrorist", "war", "gun", "weapon",
+    "shooting", "blood", "gore", "nude", "naked", "sex", "porn", "fetish", "drug", "cocaine",
+    "alcohol", "beer", "cigarette", "smoking", "gambling", "casino",
+}
+
+
+def _is_unsafe(item: dict) -> bool:
+    text = (item.get("title") or "").lower()
+    text += " " + " ".join(t.get("name", "") for t in (item.get("tags") or []) if isinstance(t, dict)).lower()
+    return any(term in text for term in UNSAFE_TERMS)
+
 
 def _load_blocklist() -> set[str]:
     if not os.path.exists(BLOCKLIST_FILE):
@@ -51,14 +70,17 @@ def search_image(keyword: str, blocked: set[str]) -> dict | None:
         params={
             "q": keyword,
             "license_type": "commercial,modification",
-            "page_size": 10,
+            "page_size": 20,
             "mature": "false",
         },
         headers=HEADERS,
         timeout=30,
     )
     resp.raise_for_status()
-    results = [r for r in resp.json().get("results", []) if r.get("url") and r.get("id") not in blocked]
+    results = [
+        r for r in resp.json().get("results", [])
+        if r.get("url") and r.get("id") not in blocked and not _is_unsafe(r)
+    ]
     if not results:
         return None
 

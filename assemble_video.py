@@ -200,7 +200,7 @@ def word_pop_image(word: str, style: dict = DEFAULT_STYLE, highlight: bool = Fal
     return img
 
 
-def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE) -> CompositeVideoClip:
+def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE, captions: bool = True) -> CompositeVideoClip:
     image_path = scene.get("image_path") or FALLBACK_IMAGE
     audio = AudioFileClip(scene["voice_path"])
     duration = audio.duration
@@ -208,7 +208,7 @@ def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE) -> CompositeVideo
     visual = ken_burns_clip(image_path, duration)
     layers = [visual]
 
-    word_timings = scene.get("word_timings")
+    word_timings = scene.get("word_timings") if captions else None
     if word_timings:
         highlight_i = _pick_highlight_index(word_timings)
         for i, wt in enumerate(word_timings):
@@ -221,7 +221,7 @@ def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE) -> CompositeVideo
                 .with_position(("center", H - word_img.shape[0] - 220))
             )
             layers.append(word_clip)
-    else:
+    elif captions:
         card_img = np.array(caption_card(scene["narration"], max_width=int(W * 0.86), style=style))
         caption = (
             ImageClip(card_img)
@@ -278,9 +278,9 @@ def generate_ambient_bed(duration: float, out_path: str) -> str:
     return out_path
 
 
-def assemble(data: dict, style: dict = DEFAULT_STYLE) -> str:
+def assemble(data: dict, style: dict = DEFAULT_STYLE, captions: bool = True) -> str:
     os.makedirs(OUT_DIR, exist_ok=True)
-    clips = [build_scene_clip(scene, style=style) for scene in data["scenes"]]
+    clips = [build_scene_clip(scene, style=style, captions=captions) for scene in data["scenes"]]
     # crossfade between scenes instead of hard cuts - mismatched stock photos
     # cutting straight into each other is one of the biggest "cheap slop" tells
     fade = min(CROSSFADE, min(c.duration for c in clips) / 2)
