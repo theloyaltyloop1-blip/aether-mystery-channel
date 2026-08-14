@@ -1,10 +1,12 @@
 name: AETHER publish - philosophy
 
-# No cron yet - manual dispatch only until YOUTUBE_CLIENT_SECRET_PHILOSOPHY_JSON
-# and YOUTUBE_TOKEN_PHILOSOPHY_JSON secrets are both set (token requires a
-# completed OAuth login first). Once both exist, add a schedule: block here
-# like publish-mystery.yml has, e.g. 3x/day for "3 parts a day".
+# 3x/day ("3 parts a day"), offset from the mystery channel's cron times
+# (23/5/11/17 UTC) so the two channels don't both grab a runner at once.
 on:
+  schedule:
+    - cron: "0 2 * * *"
+    - cron: "0 10 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch: {}
 
 permissions:
