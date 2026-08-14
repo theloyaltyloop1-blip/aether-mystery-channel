@@ -123,21 +123,57 @@ def caption_card(text: str, max_width: int, style: dict = DEFAULT_STYLE) -> Imag
     return card
 
 
+def word_pop_image(word: str, style: dict = DEFAULT_STYLE) -> Image.Image:
+    """One bold word, centered, with a thin dark stroke for legibility over
+    any background - the "TikTok caption" look: a single word pops on
+    screen in sync with narration instead of a static subtitle card."""
+    font = ImageFont.truetype(FONT_PATH, 64)
+    dummy = Image.new("RGBA", (10, 10))
+    draw = ImageDraw.Draw(dummy)
+    bbox = draw.textbbox((0, 0), word, font=font)
+    pad = 12
+    w, h = bbox[2] - bbox[0] + pad * 2, bbox[3] - bbox[1] + pad * 2
+
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    text_r, text_g, text_b = style["text_color"]
+    draw.text(
+        (pad - bbox[0], pad - bbox[1]), word, font=font,
+        fill=(text_r, text_g, text_b, 255), stroke_width=4, stroke_fill=(0, 0, 0, 220),
+    )
+    return img
+
+
 def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE) -> CompositeVideoClip:
     image_path = scene.get("image_path") or FALLBACK_IMAGE
     audio = AudioFileClip(scene["voice_path"])
     duration = audio.duration
 
     visual = ken_burns_clip(image_path, duration)
+    layers = [visual]
 
-    card_img = np.array(caption_card(scene["narration"], max_width=int(W * 0.86), style=style))
-    caption = (
-        ImageClip(card_img)
-        .with_duration(duration)
-        .with_position(("center", H - card_img.shape[0] - 170))
-    )
+    word_timings = scene.get("word_timings")
+    if word_timings:
+        for wt in word_timings:
+            word_dur = max(wt["end"] - wt["start"], 0.05)
+            word_img = np.array(word_pop_image(wt["text"], style=style))
+            word_clip = (
+                ImageClip(word_img)
+                .with_start(wt["start"])
+                .with_duration(word_dur)
+                .with_position(("center", H - word_img.shape[0] - 220))
+            )
+            layers.append(word_clip)
+    else:
+        card_img = np.array(caption_card(scene["narration"], max_width=int(W * 0.86), style=style))
+        caption = (
+            ImageClip(card_img)
+            .with_duration(duration)
+            .with_position(("center", H - card_img.shape[0] - 170))
+        )
+        layers.append(caption)
 
-    scene_clip = CompositeVideoClip([visual, caption], size=(W, H)).with_duration(duration)
+    scene_clip = CompositeVideoClip(layers, size=(W, H)).with_duration(duration)
     scene_clip = scene_clip.with_audio(audio)
     return scene_clip
 

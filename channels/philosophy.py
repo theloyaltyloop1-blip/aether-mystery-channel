@@ -72,31 +72,36 @@ HOOK_OPENERS = [
     "Seneca wrote this to a friend who was falling apart:", "Epictetus was a slave who taught emperors this lesson:",
 ]
 
-PROMPT_TEMPLATE = """You're explaining a real Stoic philosophy lesson to a friend who's stressed and needs \
-something that actually helps - calm, direct, a little blunt, not preachy or motivational-poster energy. \
-Under 60 seconds spoken. This is real philosophy, not self-help fluff - accuracy matters.
+PROMPT_TEMPLATE = """You're a warm, encouraging self-improvement coach sharing a real Stoic idea with someone \
+who wants to build a better, calmer, stronger life - upbeat and motivating, not heavy, not doom-and-gloom, \
+not lecturing. Frame everything around the concrete upside: what the person gains by living this way (calm, \
+confidence, better relationships, resilience, focus, self-respect). Under 60 seconds spoken. This is real \
+philosophy, not made-up fluff - accuracy still matters even though the tone is upbeat.
 
 Topic: {topic}
 
 {reference_section}
 
-Write EXACTLY 4 to 5 beats: the hook, what the idea actually is, why it's true/how it works, a concrete \
-way to use it today. Output EXACTLY one line per beat, narration and keyword on the SAME line, separated \
-by a single "|" character.
+Write EXACTLY 4 to 5 beats: the hook, what the idea actually is, why it works, a concrete positive way to \
+use it today. Output EXACTLY one line per beat, narration and keyword on the SAME line, separated by a \
+single "|" character.
 
 Example of the exact format and voice (follow the tone precisely, not the topic):
-Marcus Aurelius said this to himself every single morning: today I'll meet people who are rude, ungrateful, dishonest.|marcus aurelius statue bust
-He wasn't being pessimistic - he was making sure none of it could surprise him later.|roman forum ruins
-When you expect friction, it stops being able to knock you off balance.|ancient roman scroll manuscript
-Try it tomorrow morning: name one annoying thing that's probably coming, before it happens.|sunrise ancient architecture
+Marcus Aurelius started every morning the same way: he pictured the hardest parts of his day before they happened.|marcus aurelius statue bust
+That's not pessimism, it's preparation - and it's why nothing could throw him off balance.|roman forum ruins
+When you expect friction, you respond instead of react, and that alone makes you calmer all day.|ancient roman scroll manuscript
+Try it tomorrow: picture one hard moment before it happens, and watch how much easier it feels.|sunrise ancient architecture
 
 Rules:
 - THE FIRST LINE IS THE HOOK. Start it with one of these exact lead-ins, pick whichever fits best: \
-{hooks}. Immediately after the lead-in, state the actual idea in plain terms. Someone scrolling should \
-stop because the idea itself is interesting, not because of vague teasing.
+{hooks}. Immediately after the lead-in, state the actual idea in plain, positive terms. Someone scrolling \
+should stop because the idea itself sounds genuinely useful, not because of vague teasing or fear.
+- KEEP IT UPBEAT. Lead with what the person gains, not what they're doing wrong or what they should fear. \
+Avoid dwelling on suffering, death, or how hard/short life is - even where the source material touches on \
+those themes, pull out the encouraging, empowering angle instead.
 - ACCURACY IS MANDATORY. {accuracy_rule}
 - Plain spoken language. Contractions (didn't, wasn't, isn't). Vary sentence length. Keep each line under \
-22 words. No lecturing tone - talk like you actually believe this helps.
+22 words. Sound like a coach who genuinely believes this helps, not a lecture.
 - Never use any of these words or phrases, they're a dead giveaway of generic AI self-help content: {banned}
 - No scene numbers, no headers, no markdown, no blank lines, no extra commentary, no quotation marks
 - footage keyword: 2-4 plain words for real imagery that fits (classical statues, Roman/Greek ruins, \
