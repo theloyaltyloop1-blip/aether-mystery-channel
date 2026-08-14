@@ -66,14 +66,16 @@ _FONT_CANDIDATES = [
 FONT_PATH = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), _FONT_CANDIDATES[-1])
 
 
-def ken_burns_clip(image_path: str, duration: float) -> VideoClip:
+def ken_burns_clip(image_path: str, duration: float, playful: bool = False, zoom_range: float = ZOOM_RANGE) -> VideoClip:
     """Cheap pan effect: resize the source image ONCE to an oversized canvas,
     then produce each frame via plain numpy array slicing (a fixed-size crop
     window sliding across the canvas) - no per-frame resize, which is what
-    made rendering slow."""
+    made rendering slow. `playful` adds a bouncy up/down and side-to-side
+    wobble on top of the steady pan (still just numpy slicing, so it's free)
+    for a livelier, more kid-show camera feel instead of a static drift."""
     src = _grade_image(Image.open(image_path).convert("RGB"))
 
-    margin_scale = 1 + ZOOM_RANGE
+    margin_scale = 1 + zoom_range
     canvas_w, canvas_h = int(W * margin_scale), int(H * margin_scale)
     src_ratio = src.width / src.height
     canvas_ratio = canvas_w / canvas_h
@@ -92,6 +94,11 @@ def ken_burns_clip(image_path: str, duration: float) -> VideoClip:
         progress = t / duration if duration > 0 else 0
         x0 = int(max_x0 * progress)
         y0 = max_y0 // 2
+        if playful:
+            bob = np.sin(2 * np.pi * t / 1.1) * max_y0 * 0.5
+            wobble = np.sin(2 * np.pi * t / 1.7) * max_x0 * 0.25
+            y0 = int(np.clip(y0 + bob, 0, max_y0))
+            x0 = int(np.clip(x0 + wobble, 0, max_x0))
         return big[y0 : y0 + H, x0 : x0 + W]
 
     return VideoClip(make_frame, duration=duration)
@@ -205,7 +212,11 @@ def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE, captions: bool = 
     audio = AudioFileClip(scene["voice_path"])
     duration = audio.duration
 
-    visual = ken_burns_clip(image_path, duration)
+    visual = ken_burns_clip(
+        image_path, duration,
+        playful=style.get("playful", False),
+        zoom_range=style.get("zoom_range", ZOOM_RANGE),
+    )
     layers = [visual]
 
     word_timings = scene.get("word_timings") if captions else None

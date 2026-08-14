@@ -6,8 +6,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
 ]
 BASE_DIR = os.path.dirname(__file__)
-CLIENT_SECRET_FILE = os.path.join(BASE_DIR, "client_secret_kids.json")
-TOKEN_FILE = os.path.join(BASE_DIR, "token_kids.json")
+CLIENT_SECRET_FILE = os.path.join(BASE_DIR, "client_secret_space.json")
+TOKEN_FILE = os.path.join(BASE_DIR, "token_space.json")
 
 if __name__ == "__main__":
     flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)

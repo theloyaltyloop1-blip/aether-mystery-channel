@@ -1,10 +1,10 @@
 """AETHER channel registry - one module per niche/YouTube account."""
-from . import mystery, philosophy, kids
+from . import mystery, philosophy, space
 
 CHANNELS = {
     "mystery": mystery,
     "philosophy": philosophy,
-    "kids": kids,
+    "space": space,
 }
 
 

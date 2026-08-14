@@ -55,7 +55,8 @@ def main(channel_name: str) -> None:
         log.info(f"Script: {len(scenes)} scenes")
 
         jobs.update_job(job_id, step="fetching footage")
-        scenes = fetch_footage_for_scenes(scenes)
+        footage_source = getattr(channel, "FOOTAGE_SOURCE", "openverse")
+        scenes = fetch_footage_for_scenes(scenes, source=footage_source)
 
         jobs.update_job(job_id, step="generating voiceover")
         scenes = asyncio.run(generate_voice_for_scenes(scenes, voice=voice))

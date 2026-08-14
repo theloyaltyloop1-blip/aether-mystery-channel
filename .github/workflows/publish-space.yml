@@ -1,0 +1,64 @@
+name: AETHER publish - space
+
+# No cron yet - manual dispatch only until this has a successful test run.
+# Once confirmed working, add a schedule: block here like publish-mystery.yml
+# has, offset from the other channels' cron times.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg and fonts
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ollama-models-llama3.2-3b
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and pull model
+        run: |
+          ollama serve &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/version && break
+            sleep 1
+          done
+          ollama pull llama3.2:3b
+
+      - name: Restore YouTube credentials
+        run: |
+          printf '%s' "$CLIENT_SECRET_JSON" > client_secret_space.json
+          printf '%s' "$TOKEN_JSON" > token_space.json
+        env:
+          CLIENT_SECRET_JSON: ${{ secrets.YOUTUBE_CLIENT_SECRET_SPACE_JSON }}
+          TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_SPACE_JSON }}
+
+      - name: Run AETHER publish
+        run: python auto_publish.py space
+
+      - name: Persist used-topics log
+        run: |
+          git config user.name "AETHER bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add assets/used_topics_space.json
+          git diff --cached --quiet || git commit -m "chore: update used topics (space)"
+          git push
