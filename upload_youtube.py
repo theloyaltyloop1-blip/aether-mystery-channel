@@ -30,27 +30,37 @@ CLIENT_SECRET_FILE = os.path.join(BASE_DIR, "client_secret.json")
 TOKEN_FILE = os.path.join(BASE_DIR, "token.json")
 
 
-def get_credentials() -> Credentials:
+def get_credentials(client_secret_file: str = CLIENT_SECRET_FILE, token_file: str = TOKEN_FILE) -> Credentials:
     creds = None
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists(CLIENT_SECRET_FILE):
+            if not os.path.exists(client_secret_file):
                 raise SystemExit(
-                    f"Missing {CLIENT_SECRET_FILE}. See the setup steps in this file's docstring."
+                    f"Missing {client_secret_file}. See the setup steps in this file's docstring."
                 )
-            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, "w") as f:
+        with open(token_file, "w") as f:
             f.write(creds.to_json())
     return creds
 
 
-def upload_video(video_path: str, title: str, description: str, tags: list[str], privacy: str = "private") -> str:
-    creds = get_credentials()
+def upload_video(
+    video_path: str,
+    title: str,
+    description: str,
+    tags: list[str],
+    privacy: str = "private",
+    client_secret_file: str = CLIENT_SECRET_FILE,
+    token_file: str = TOKEN_FILE,
+    category_id: str = "27",
+    made_for_kids: bool = False,
+) -> str:
+    creds = get_credentials(client_secret_file, token_file)
     youtube = build("youtube", "v3", credentials=creds)
 
     body = {
@@ -58,9 +68,12 @@ def upload_video(video_path: str, title: str, description: str, tags: list[str],
             "title": title[:100],
             "description": description[:5000],
             "tags": tags,
-            "categoryId": "27",  # Education
+            "categoryId": category_id,
         },
-        "status": {"privacyStatus": privacy},  # "private" by default - flip to "public" once you trust it
+        "status": {
+            "privacyStatus": privacy,  # "private" by default - flip to "public" once you trust it
+            "selfDeclaredMadeForKids": made_for_kids,
+        },
     }
 
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
@@ -75,12 +88,17 @@ def upload_video(video_path: str, title: str, description: str, tags: list[str],
     return response["id"]
 
 
-def set_thumbnail(video_id: str, thumbnail_path: str) -> None:
+def set_thumbnail(
+    video_id: str,
+    thumbnail_path: str,
+    client_secret_file: str = CLIENT_SECRET_FILE,
+    token_file: str = TOKEN_FILE,
+) -> None:
     """Best-effort - custom thumbnails require the channel to be verified,
     so this logs and moves on rather than failing the whole publish if it's
     rejected."""
     try:
-        creds = get_credentials()
+        creds = get_credentials(client_secret_file, token_file)
         youtube = build("youtube", "v3", credentials=creds)
         media = MediaFileUpload(thumbnail_path, mimetype="image/jpeg")
         youtube.thumbnails().set(videoId=video_id, media_body=media).execute()

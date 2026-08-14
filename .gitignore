@@ -1,12 +1,14 @@
 venv/
 __pycache__/
 *.pyc
-client_secret.json
-token.json
+client_secret*.json
+token*.json
 tiktok_secrets.json
 tiktok_token.json
 assets/*
 !assets/used_topics.json
+!assets/used_topics_philosophy.json
+!assets/used_topics_kids.json
 !assets/fallback.jpg
 !assets/image_blocklist.json
 *.log

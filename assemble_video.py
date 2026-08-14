@@ -69,7 +69,14 @@ def ken_burns_clip(image_path: str, duration: float) -> VideoClip:
     return VideoClip(make_frame, duration=duration)
 
 
-def caption_card(text: str, max_width: int) -> Image.Image:
+DEFAULT_STYLE = {
+    "box_color": (10, 14, 22),
+    "box_alpha": 165,
+    "text_color": (255, 255, 255),
+}
+
+
+def caption_card(text: str, max_width: int, style: dict = DEFAULT_STYLE) -> Image.Image:
     """Renders caption text with a soft rounded semi-transparent card behind
     it instead of a hard black stroke outline - the thick-stroke-on-white
     look is one of the most obvious "AI slop" tells, a subtitle card reads
@@ -100,28 +107,30 @@ def caption_card(text: str, max_width: int) -> Image.Image:
     card_w = max_width
     card_h = text_h + 2 * pad_y
 
+    box_r, box_g, box_b = style["box_color"]
     card = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(card)
-    draw.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius=22, fill=(10, 14, 22, 165))
+    draw.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius=22, fill=(box_r, box_g, box_b, style["box_alpha"]))
 
+    text_r, text_g, text_b = style["text_color"]
     y = pad_y
     for line in lines:
         line_w = draw.textlength(line, font=font)
         x = (card_w - line_w) / 2
-        draw.text((x, y), line, font=font, fill=(255, 255, 255, 255))
+        draw.text((x, y), line, font=font, fill=(text_r, text_g, text_b, 255))
         y += line_h + line_spacing
 
     return card
 
 
-def build_scene_clip(scene: dict) -> CompositeVideoClip:
+def build_scene_clip(scene: dict, style: dict = DEFAULT_STYLE) -> CompositeVideoClip:
     image_path = scene.get("image_path") or FALLBACK_IMAGE
     audio = AudioFileClip(scene["voice_path"])
     duration = audio.duration
 
     visual = ken_burns_clip(image_path, duration)
 
-    card_img = np.array(caption_card(scene["narration"], max_width=int(W * 0.86)))
+    card_img = np.array(caption_card(scene["narration"], max_width=int(W * 0.86), style=style))
     caption = (
         ImageClip(card_img)
         .with_duration(duration)
@@ -176,9 +185,9 @@ def generate_ambient_bed(duration: float, out_path: str) -> str:
     return out_path
 
 
-def assemble(data: dict) -> str:
+def assemble(data: dict, style: dict = DEFAULT_STYLE) -> str:
     os.makedirs(OUT_DIR, exist_ok=True)
-    clips = [build_scene_clip(scene) for scene in data["scenes"]]
+    clips = [build_scene_clip(scene, style=style) for scene in data["scenes"]]
     final = concatenate_videoclips(clips, method="compose")
 
     ambient_path = os.path.join(OUT_DIR, "_ambient_tmp.wav")
