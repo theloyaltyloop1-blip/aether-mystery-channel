@@ -83,13 +83,13 @@ Write EXACTLY 4 to 5 beats that tell the story fast: the hook, the strange part,
 (or didn't), how it was left. Output EXACTLY one line per beat, narration and keyword on the SAME line, \
 separated by a single "|" character.
 
-Example of the exact format and voice (follow the tone precisely, not the topic):
-Listen to this: a pilot took off from a small airfield and never checked in again - no mayday, nothing.|small plane airfield runway
-Radar had him flying dead straight for another forty minutes with no response to calls.|radar screen tracking line
-Then the signal just stopped. No crash site, no debris field, nothing.|search plane over water
-They still don't know what he was flying toward.|old newspaper clipping headline
+Example of the exact FORMAT and VOICE only - it is about a completely different case, so do not reuse \
+any of its facts, story, or wording. Every line you write must be new content specifically about {topic}:
+{example}
 
 Rules:
+- THE EXAMPLE ABOVE IS A TONE REFERENCE ONLY. It is not about {topic}. If your output shares its story, \
+its facts, or close paraphrases of its wording, that is a failure - write entirely new content instead.
 - THE FIRST LINE IS THE HOOK. Start it with one of these exact lead-ins, pick whichever fits best: \
 {hooks}. Immediately after the lead-in, in the SAME sentence or the one right after, state the single \
 strangest, most well-documented fact of the real case. Someone scrolling should stop because of what you \
@@ -105,6 +105,21 @@ old newspapers, etc.)
 if uncertain rather than fabricating
 - Output ONLY the pipe-separated lines, nothing before or after
 """
+
+EXAMPLES = [
+    """Listen to this: a pilot took off from a small airfield and never checked in again - no mayday, nothing.|small plane airfield runway
+Radar had him flying dead straight for another forty minutes with no response to calls.|radar screen tracking line
+Then the signal just stopped. No crash site, no debris field, nothing.|search plane over water
+Nobody has ever explained what he was flying toward.|old newspaper clipping headline""",
+    """You need to hear this one: a fully-stocked ship was found drifting with the entire crew gone.|abandoned ship deck
+No lifeboats missing, no signs of struggle, food still on the table.|old ship interior
+Whatever happened, it happened fast enough that nobody grabbed anything on the way out.|ocean horizon empty
+The crew was never found, not one body, not one clue.|search boats ocean""",
+    """Here's a case that still doesn't add up: three lighthouse keepers vanished without a trace.|lighthouse cliff coast
+The light was still running, the table was set for dinner, but the men were gone.|lighthouse interior table
+One oilskin coat was left behind, like whoever wore it left in the middle of something.|old coat weathered
+Nobody has ever explained what took them off that rock.|stormy sea cliffs""",
+]
 
 GROUNDED_ACCURACY_RULE = (
     "Every specific fact you state - injuries, what was/wasn't found, causes, outcomes - must come from "
@@ -123,6 +138,7 @@ SPEC = ChannelSpec(
     prompt_template=PROMPT_TEMPLATE,
     banned_phrases=BANNED_PHRASES,
     hook_openers=HOOK_OPENERS,
+    examples=EXAMPLES,
     max_scenes=5,
     use_grounding=True,
     grounded_accuracy_rule=GROUNDED_ACCURACY_RULE,

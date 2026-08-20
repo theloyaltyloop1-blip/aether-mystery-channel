@@ -20,9 +20,11 @@ MODEL = "llama3.2:3b"
 
 @dataclass
 class ChannelSpec:
-    prompt_template: str  # must have {topic} {reference_section} {accuracy_rule} {banned} {hooks} placeholders
+    # must have {topic} {reference_section} {accuracy_rule} {banned} {hooks} {example} placeholders
+    prompt_template: str
     banned_phrases: list[str]
     hook_openers: list[str]
+    examples: list[str] = field(default_factory=list)  # rotated per call, see note below
     max_scenes: int = 5
     use_grounding: bool = True  # False for fiction/curated content - no real-world facts to check
     grounded_accuracy_rule: str = ""
@@ -32,7 +34,12 @@ class ChannelSpec:
 
 
 def _call_model(spec: ChannelSpec, topic: str, temperature: float, reference: str | None) -> str:
-    hooks = ", ".join(f'"{h}"' for h in spec.hook_openers)
+    # a weak model tends to just default to whichever hook is listed first -
+    # shuffling the order each call spreads picks across all of them instead
+    # of one opener dominating every video
+    shuffled_hooks = spec.hook_openers[:]
+    random.shuffle(shuffled_hooks)
+    hooks = ", ".join(f'"{h}"' for h in shuffled_hooks)
     if reference:
         reference_section = f"REFERENCE TEXT (the only source of facts you're allowed to use):\n{reference}"
         accuracy_rule = spec.grounded_accuracy_rule
@@ -40,9 +47,16 @@ def _call_model(spec: ChannelSpec, topic: str, temperature: float, reference: st
         reference_section = ""
         accuracy_rule = spec.ungrounded_accuracy_rule
 
+    # llama3.2:3b is small enough that a single fixed worked example becomes
+    # an "attractor" - it was observed reproducing the SAME example's story
+    # almost every generation regardless of the actual topic requested.
+    # Rotating between several examples (plus the copy-detection retry below)
+    # stops any one story from dominating every video.
+    example = random.choice(spec.examples) if spec.examples else ""
+
     prompt = spec.prompt_template.format(
         topic=topic, banned=", ".join(spec.banned_phrases), hooks=hooks,
-        reference_section=reference_section, accuracy_rule=accuracy_rule,
+        reference_section=reference_section, accuracy_rule=accuracy_rule, example=example,
     )
     resp = requests.post(
         OLLAMA_URL,
@@ -50,7 +64,7 @@ def _call_model(spec: ChannelSpec, topic: str, temperature: float, reference: st
         timeout=180,
     )
     resp.raise_for_status()
-    return resp.json()["response"].strip()
+    return resp.json()["response"].strip(), example
 
 
 def _contains_banned_phrase(spec: ChannelSpec, narration: str) -> bool:
@@ -97,13 +111,39 @@ def _weak_hook(spec: ChannelSpec, raw_scenes: list[dict]) -> bool:
     return _contains_banned_phrase(spec, first) or not _has_approved_opener(spec, first)
 
 
+_WORD_RE = re.compile(r"[a-z0-9']+")
+
+
+def _copied_from_example(raw_scenes: list[dict], example: str) -> bool:
+    """A small local model can fall back to reproducing the worked example's
+    actual story instead of writing about the requested topic - this was
+    observed happening almost every generation with a single fixed example.
+    Flags it by looking for a long run of shared words between the output
+    and the example, which a genuinely new script about a different topic
+    won't have even after paraphrasing word choice slightly."""
+    if not example or not raw_scenes:
+        return False
+    example_words = _WORD_RE.findall(example.lower())
+    for scene in raw_scenes:
+        scene_words = _WORD_RE.findall(scene["narration"].lower())
+        for i in range(len(scene_words) - 4):
+            window = " ".join(scene_words[i : i + 5])
+            if window in " ".join(example_words):
+                return True
+    return False
+
+
 def generate_script(spec: ChannelSpec, topic: str) -> list[dict]:
     reference = get_grounding_text(topic) if spec.use_grounding else None
-    raw = _parse_scenes(_call_model(spec, topic, spec.temperature, reference))
+    text, example = _call_model(spec, topic, spec.temperature, reference)
+    raw = _parse_scenes(text)
 
-    if _weak_hook(spec, raw) or len(raw) < 3:
-        raw2 = _parse_scenes(_call_model(spec, topic, spec.retry_temperature, reference))
-        if not _weak_hook(spec, raw2) or _weak_hook(spec, raw):
+    if _weak_hook(spec, raw) or len(raw) < 3 or _copied_from_example(raw, example):
+        text2, example2 = _call_model(spec, topic, spec.retry_temperature, reference)
+        raw2 = _parse_scenes(text2)
+        retry_bad = _weak_hook(spec, raw2) or _copied_from_example(raw2, example2)
+        original_bad = _weak_hook(spec, raw) or _copied_from_example(raw, example)
+        if not retry_bad or original_bad:
             raw = raw2
 
     if raw and not _has_approved_opener(spec, raw[0]["narration"]):

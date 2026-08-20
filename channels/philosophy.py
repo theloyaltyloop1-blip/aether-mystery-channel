@@ -86,13 +86,13 @@ Write EXACTLY 4 to 5 beats: the hook, what the idea actually is, why it works, a
 use it today. Output EXACTLY one line per beat, narration and keyword on the SAME line, separated by a \
 single "|" character.
 
-Example of the exact format and voice (follow the tone precisely, not the topic):
-Marcus Aurelius started every morning the same way: he pictured the hardest parts of his day before they happened.|marcus aurelius statue bust
-That's not pessimism, it's preparation - and it's why nothing could throw him off balance.|roman forum ruins
-When you expect friction, you respond instead of react, and that alone makes you calmer all day.|ancient roman scroll manuscript
-Try it tomorrow: picture one hard moment before it happens, and watch how much easier it feels.|sunrise ancient architecture
+Example of the exact FORMAT and VOICE only - it is about a completely different topic, so do not reuse \
+any of its facts, story, or wording. Every line you write must be new content specifically about {topic}:
+{example}
 
 Rules:
+- THE EXAMPLE ABOVE IS A TONE REFERENCE ONLY. It is not about {topic}. If your output shares its story, \
+its facts, or close paraphrases of its wording, that is a failure - write entirely new content instead.
 - THE FIRST LINE IS THE HOOK. Start it with one of these exact lead-ins, pick whichever fits best: \
 {hooks}. Immediately after the lead-in, state the actual idea in plain, positive terms. Someone scrolling \
 should stop because the idea itself sounds genuinely useful, not because of vague teasing or fear.
@@ -110,6 +110,21 @@ ancient manuscripts, nature, historical art, philosophers' busts, etc.)
 - Output ONLY the pipe-separated lines, nothing before or after
 """
 
+EXAMPLES = [
+    """Marcus Aurelius started every morning the same way: he pictured the hardest parts of his day before they happened.|marcus aurelius statue bust
+That's not pessimism, it's preparation - and it's why nothing could throw him off balance.|roman forum ruins
+When you expect friction, you respond instead of react, and that alone makes you calmer all day.|ancient roman scroll manuscript
+Try it tomorrow: picture one hard moment before it happens, and watch how much easier it feels.|sunrise ancient architecture""",
+    """Seneca once told a friend that most people aren't poor, they just spend badly.|ancient roman coins
+He wasn't talking about money - he meant time, the one thing you can never earn back.|hourglass ancient ruins
+Once you start treating your hours like your money, you get pickier about who gets them.|sundial stone carving
+Try it today: notice one hour you handed away for free, and decide if it was worth it.|roman villa garden""",
+    """Epictetus spent years as a slave before he ever taught a single lesson.|epictetus bust statue
+He said the one thing no one could ever take from him was his own judgment.|ancient greek philosopher scroll
+That's the whole idea: control your reaction, and nothing external can actually touch you.|greek temple ruins
+Try it today: pick one thing bothering you, and ask whether it's the event itself or just your reaction to it.|ancient agora ruins""",
+]
+
 GROUNDED_ACCURACY_RULE = (
     "Every specific claim - quotes, events, what a philosopher actually said or did - must come from the "
     "REFERENCE TEXT above. Do not invent or paraphrase a direct quote that isn't clearly supported by that "
@@ -125,6 +140,7 @@ SPEC = ChannelSpec(
     prompt_template=PROMPT_TEMPLATE,
     banned_phrases=BANNED_PHRASES,
     hook_openers=HOOK_OPENERS,
+    examples=EXAMPLES,
     max_scenes=5,
     use_grounding=True,
     grounded_accuracy_rule=GROUNDED_ACCURACY_RULE,

@@ -87,13 +87,13 @@ Write EXACTLY 4 to 5 beats: the hook, what the fact actually is, why it's true/h
 detail that makes it click. Output EXACTLY one line per beat, narration and keyword on the SAME line, \
 separated by a single "|" character.
 
-Example of the exact format and voice (follow the tone precisely, not the topic):
-Here's something that sounds impossible but isn't: Voyager 1 is over 15 billion miles away and still transmitting.|voyager spacecraft deep space
-It's been flying since 1977, and it's now the most distant human-made object in existence.|voyager spacecraft launch
-Its radio signal takes over 22 hours to reach Earth, one way.|deep space network antenna
-It's still sending data with less computing power than a modern calculator.|spacecraft instruments panel
+Example of the exact FORMAT and VOICE only - it is about a completely different fact, so do not reuse \
+any of its facts, story, or wording. Every line you write must be new content specifically about {topic}:
+{example}
 
 Rules:
+- THE EXAMPLE ABOVE IS A TONE REFERENCE ONLY. It is not about {topic}. If your output shares its facts, \
+its story, or close paraphrases of its wording, that is a failure - write entirely new content instead.
 - THE FIRST LINE IS THE HOOK. Start it with one of these exact lead-ins, pick whichever fits best: \
 {hooks}. Immediately after the lead-in, state the actual fact in plain terms. Someone scrolling should \
 stop because the fact itself is interesting, not because of vague teasing.
@@ -107,6 +107,21 @@ astronaut, nebula, etc. - avoid overly specific mission jargon that NASA's image
 - Do not invent numbers, dates, or specific claims you're not sure are real - keep it general if uncertain
 - Output ONLY the pipe-separated lines, nothing before or after
 """
+
+EXAMPLES = [
+    """Here's something that sounds impossible but isn't: Voyager 1 is over 15 billion miles away and still transmitting.|voyager spacecraft deep space
+It's been flying since 1977, and it's now the most distant human-made object in existence.|voyager spacecraft launch
+Its radio signal takes over 22 hours to reach Earth, one way.|deep space network antenna
+It's still sending data with less computing power than a modern calculator.|spacecraft instruments panel""",
+    """This is what actually happens when a star dies: if it's massive enough, it collapses into a single point.|dying star supernova
+Gravity there gets so strong that not even light can escape it.|black hole illustration
+That boundary is called the event horizon - cross it and there's no coming back.|event horizon deep space
+Nothing about it is empty - it's just matter packed impossibly tight.|neutron star nebula""",
+    """Scientists genuinely didn't expect this: the James Webb telescope found galaxies far older than models predicted.|james webb telescope image
+They formed within a few hundred million years of the Big Bang itself.|early universe galaxies
+That's not enough time for galaxies that size to form, by the old math.|deep field galaxy image
+Astronomers are still rewriting their models because of it.|hubble deep field stars""",
+]
 
 GROUNDED_ACCURACY_RULE = (
     "Every specific claim - numbers, dates, mission names, what was/wasn't discovered - must come from the "
@@ -122,6 +137,7 @@ SPEC = ChannelSpec(
     prompt_template=PROMPT_TEMPLATE,
     banned_phrases=BANNED_PHRASES,
     hook_openers=HOOK_OPENERS,
+    examples=EXAMPLES,
     max_scenes=5,
     use_grounding=True,
     grounded_accuracy_rule=GROUNDED_ACCURACY_RULE,
