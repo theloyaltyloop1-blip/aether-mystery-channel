@@ -8,6 +8,7 @@ module builds a ChannelSpec and calls generate_script(spec, topic).
 """
 import random
 import re
+import sys
 from dataclasses import dataclass, field
 
 import requests
@@ -160,10 +161,14 @@ def generate_script(spec: ChannelSpec, topic: str) -> list[dict]:
     reference = get_grounding_text(topic) if spec.use_grounding else None
     text, example = _call_model(spec, topic, spec.temperature, reference)
     raw = _parse_scenes(text)
+    if not raw:
+        print(f"[script_engine] parse produced 0 scenes, raw response ({len(text)} chars): {text[:1000]!r}", file=sys.stderr)
 
     if _is_bad(spec, raw, example):
         text2, example2 = _call_model(spec, topic, spec.retry_temperature, reference)
         raw2 = _parse_scenes(text2)
+        if not raw2:
+            print(f"[script_engine] retry also produced 0 scenes, raw response ({len(text2)} chars): {text2[:1000]!r}", file=sys.stderr)
         if not _is_bad(spec, raw2, example2) or _is_bad(spec, raw, example):
             raw = raw2
 
