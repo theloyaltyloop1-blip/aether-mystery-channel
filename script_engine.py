@@ -105,6 +105,42 @@ def _parse_scenes(text: str) -> list[dict]:
     return scenes
 
 
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+_KEYWORD_LINE_RE = re.compile(r"^(?:footage\s*)?keyword:?\s*(.+)$", re.IGNORECASE)
+
+
+def _fallback_parse(text: str) -> list[dict]:
+    """The model sometimes ignores the pipe-delimited format entirely and
+    writes plain prose instead (confirmed in production - three consecutive
+    real generations did this for the same topic, each one otherwise a
+    perfectly good script). Rather than discarding good content because of
+    a formatting slip, split it into sentences and derive a footage keyword
+    per line - or reuse a trailing "Footage keyword: X" note if the model
+    left one, which it sometimes does even in this broken mode."""
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    global_keyword = None
+    body_lines = []
+    for line in lines:
+        m = _KEYWORD_LINE_RE.match(line)
+        if m:
+            global_keyword = m.group(1).strip().strip('"')
+        else:
+            body_lines.append(re.sub(r"^\d+[\.\)]\s*", "", line))
+
+    text_body = " ".join(body_lines)
+    sentences = [s.strip().strip('"') for s in _SENTENCE_RE.split(text_body) if len(s.strip()) > 8]
+
+    scenes = []
+    for sentence in sentences:
+        if global_keyword:
+            keyword = global_keyword
+        else:
+            words = [w for w in _WORD_RE.findall(sentence) if len(w) > 3][-4:]
+            keyword = " ".join(words) if words else "abstract concept"
+        scenes.append({"narration": sentence, "keyword": keyword})
+    return scenes
+
+
 def _has_approved_opener(spec: ChannelSpec, narration: str) -> bool:
     lowered = narration.lower().strip()
     return any(lowered.startswith(opener.lower()) for opener in spec.hook_openers)
@@ -157,16 +193,27 @@ def _is_bad(spec: ChannelSpec, raw_scenes: list[dict], example: str) -> bool:
     )
 
 
+def _parse_with_fallback(text: str) -> list[dict]:
+    raw = _parse_scenes(text)
+    if len(raw) >= 3:
+        return raw
+    fallback = _fallback_parse(text)
+    if len(fallback) > len(raw):
+        print(f"[script_engine] pipe format missing, recovered {len(fallback)} scenes via prose fallback", file=sys.stderr)
+        return fallback
+    return raw
+
+
 def generate_script(spec: ChannelSpec, topic: str) -> list[dict]:
     reference = get_grounding_text(topic) if spec.use_grounding else None
     text, example = _call_model(spec, topic, spec.temperature, reference)
-    raw = _parse_scenes(text)
+    raw = _parse_with_fallback(text)
     if not raw:
         print(f"[script_engine] parse produced 0 scenes, raw response ({len(text)} chars): {text[:1000]!r}", file=sys.stderr)
 
     if _is_bad(spec, raw, example):
         text2, example2 = _call_model(spec, topic, spec.retry_temperature, reference)
-        raw2 = _parse_scenes(text2)
+        raw2 = _parse_with_fallback(text2)
         if not raw2:
             print(f"[script_engine] retry also produced 0 scenes, raw response ({len(text2)} chars): {text2[:1000]!r}", file=sys.stderr)
         if not _is_bad(spec, raw2, example2) or _is_bad(spec, raw, example):
