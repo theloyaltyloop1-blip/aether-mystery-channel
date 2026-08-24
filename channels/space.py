@@ -51,6 +51,40 @@ SEED_TOPICS = [
     "the James Webb Space Telescope's most distant galaxies",
     "the Chelyabinsk meteor",
     "the discovery of Pluto",
+    "the Kepler space telescope's exoplanet discoveries",
+    "the theory of cosmic inflation",
+    "the discovery of the cosmic microwave background",
+    "the Great Attractor pulling our galaxy",
+    "the Oort Cloud at the edge of the solar system",
+    "the Parker Solar Probe's mission into the Sun's corona",
+    "the mystery of fast radio bursts",
+    "the rings of Saturn and how they formed",
+    "the discovery of exoplanet Proxima Centauri b",
+    "the Chandra X-ray Observatory's discoveries",
+    "the Roche limit and why moons break apart",
+    "the New Horizons flyby of Pluto",
+    "the Tunguska-scale risk of near-Earth asteroids",
+    "the discovery of gravitational lensing",
+    "the science of solar eclipses",
+    "the Great Oxidation Event in Earth's early atmosphere",
+    "the theory of panspermia",
+    "the discovery of water ice on the Moon",
+    "the Artemis program's return to the Moon",
+    "the Juno mission's discoveries at Jupiter",
+    "the science behind why the sky is blue",
+    "the Chicxulub crater's discovery",
+    "the diamond rain theorized on Neptune and Uranus",
+    "the discovery of the first black hole image (M87)",
+    "the Andromeda galaxy's eventual collision with the Milky Way",
+    "the Van Allen radiation belts",
+    "the discovery of pulsars",
+    "the mystery of Planet Nine",
+    "the Apollo 13 mission's near-disaster",
+    "the discovery of extremophiles and what it means for alien life",
+    "the science of red dwarf stars",
+    "the Voyager 2 flybys of Uranus and Neptune",
+    "the theory of the multiverse",
+    "the discovery of the first exoplanet ever confirmed",
 ]
 
 INVENT_PROMPT = (
@@ -133,6 +167,12 @@ UNGROUNDED_ACCURACY_RULE = (
     "things in general terms instead of making up a precise figure you're not sure of."
 )
 
+SUBSCRIBE_CTAS = [
+    "Follow for a new space fact every day.",
+    "If that surprised you, follow - there's more like it daily.",
+    "Follow for daily facts that make the universe feel a little bigger.",
+]
+
 SPEC = ChannelSpec(
     prompt_template=PROMPT_TEMPLATE,
     banned_phrases=BANNED_PHRASES,
@@ -142,6 +182,8 @@ SPEC = ChannelSpec(
     use_grounding=True,
     grounded_accuracy_rule=GROUNDED_ACCURACY_RULE,
     ungrounded_accuracy_rule=UNGROUNDED_ACCURACY_RULE,
+    subscribe_ctas=SUBSCRIBE_CTAS,
+    cta_keyword="galaxy stars wide shot",
 )
 
 

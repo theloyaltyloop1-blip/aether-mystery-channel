@@ -52,7 +52,13 @@ def main(channel_name: str) -> None:
             scenes = channel.generate_script(topic)
         if not scenes:
             raise RuntimeError("Script generation returned no scenes - is Ollama running?")
-        log.info(f"Script: {len(scenes)} scenes")
+        # script_engine already retries internally for a thin script, but
+        # this is the last line of defense - one video actually published
+        # at 6 seconds long because nothing checked total content length
+        total_words = sum(len(s["narration"].split()) for s in scenes)
+        if total_words < 25:
+            raise RuntimeError(f"Script too thin ({total_words} words across {len(scenes)} scenes) - refusing to publish")
+        log.info(f"Script: {len(scenes)} scenes, {total_words} words")
 
         jobs.update_job(job_id, step="fetching footage")
         footage_source = getattr(channel, "FOOTAGE_SOURCE", "openverse")

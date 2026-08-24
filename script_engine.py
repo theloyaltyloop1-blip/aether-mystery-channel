@@ -31,6 +31,11 @@ class ChannelSpec:
     ungrounded_accuracy_rule: str = ""
     temperature: float = 0.85
     retry_temperature: float = 1.0
+    # appended as a guaranteed extra final scene, not left to the model -
+    # retention is already strong (72-80% avg view %) but nothing was ever
+    # asking viewers to subscribe, so it was pure wasted attention
+    subscribe_ctas: list[str] = field(default_factory=list)
+    cta_keyword: str = ""  # footage keyword for the CTA scene; falls back to the last real scene's keyword
 
 
 def _call_model(spec: ChannelSpec, topic: str, temperature: float, reference: str | None) -> str:
@@ -133,17 +138,33 @@ def _copied_from_example(raw_scenes: list[dict], example: str) -> bool:
     return False
 
 
+def _too_short(raw_scenes: list[dict]) -> bool:
+    """A generation hiccup can produce a technically-valid but near-empty
+    script (one real video ended up 6 seconds long) - a normal script runs
+    well over 60 words across its beats, so anything under 20 is broken,
+    not just terse."""
+    total_words = sum(len(s["narration"].split()) for s in raw_scenes)
+    return total_words < 20
+
+
+def _is_bad(spec: ChannelSpec, raw_scenes: list[dict], example: str) -> bool:
+    return (
+        _weak_hook(spec, raw_scenes)
+        or len(raw_scenes) < 3
+        or _too_short(raw_scenes)
+        or _copied_from_example(raw_scenes, example)
+    )
+
+
 def generate_script(spec: ChannelSpec, topic: str) -> list[dict]:
     reference = get_grounding_text(topic) if spec.use_grounding else None
     text, example = _call_model(spec, topic, spec.temperature, reference)
     raw = _parse_scenes(text)
 
-    if _weak_hook(spec, raw) or len(raw) < 3 or _copied_from_example(raw, example):
+    if _is_bad(spec, raw, example):
         text2, example2 = _call_model(spec, topic, spec.retry_temperature, reference)
         raw2 = _parse_scenes(text2)
-        retry_bad = _weak_hook(spec, raw2) or _copied_from_example(raw2, example2)
-        original_bad = _weak_hook(spec, raw) or _copied_from_example(raw, example)
-        if not retry_bad or original_bad:
+        if not _is_bad(spec, raw2, example2) or _is_bad(spec, raw, example):
             raw = raw2
 
     if raw and not _has_approved_opener(spec, raw[0]["narration"]):
@@ -151,4 +172,10 @@ def generate_script(spec: ChannelSpec, topic: str) -> list[dict]:
         raw[0] = {**raw[0], "narration": f"{opener} {raw[0]['narration']}"}
 
     scenes = [s for s in raw if not _contains_banned_phrase(spec, s["narration"])]
-    return scenes[: spec.max_scenes]
+    scenes = scenes[: spec.max_scenes]
+
+    if scenes and spec.subscribe_ctas:
+        cta_keyword = spec.cta_keyword or scenes[-1]["keyword"]
+        scenes.append({"narration": random.choice(spec.subscribe_ctas), "keyword": cta_keyword})
+
+    return scenes

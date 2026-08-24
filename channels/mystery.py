@@ -44,6 +44,45 @@ SEED_TOPICS = [
     "the disappearance of adventurer Percy Fawcett's expedition",
     "the strange case of the Taos Hum",
     "the disappearance of the crew of the Baychimo ghost ship",
+    # broadened beyond aviation - the channel had burned through the original
+    # 30 topics and fallen back to a small local model repeatedly re-inventing
+    # the same handful of cases (Dyatlov Pass alone got published 11 times)
+    "the Zodiac Killer's unsolved identity",
+    "the Isdal Woman case in Norway",
+    "the Somerton Man case (Tamam Shud)",
+    "the Beaumont children disappearance",
+    "the Max Headroom broadcast signal intrusion",
+    "the Voynich Manuscript's untranslated text",
+    "the Oak Island Money Pit",
+    "the Kaspar Hauser mystery",
+    "the disappearance of the Princes in the Tower",
+    "the Hinterkaifeck farmhouse murders",
+    "the Axeman of New Orleans",
+    "the Villisca axe murders",
+    "the Georgia Guidestones and their destruction",
+    "the purpose of the Nazca Lines",
+    "the Antikythera mechanism",
+    "the Phaistos Disc's untranslated symbols",
+    "the Piri Reis map's impossible accuracy",
+    "the Baghdad Battery",
+    "the Springheeled Jack sightings in Victorian London",
+    "the Toynbee tiles mystery",
+    "the Bloop deep ocean sound",
+    "the Wow! signal from deep space",
+    "the Circleville Letters case",
+    "the Hessdalen lights phenomenon",
+    "the Kecksburg UFO incident",
+    "the Rendlesham Forest incident",
+    "the Lead Masks Case in Rio de Janeiro",
+    "the disappearance of Jean Spangler",
+    "the crash and disappearance of Northwest Orient Flight 2",
+    "the disappearance of aviator Amy Johnson over the Thames Estuary",
+    "the disappearance of the crew of the Joyita",
+    "the mystery of the Bella in the Wych Elm",
+    "the unexplained Overtoun Bridge dog jumps",
+    "the disappearance of publisher Michael Rockefeller",
+    "the crash of the airship USS Akron",
+    "the disappearance of the SS Marine Sulphur Queen",
 ]
 
 INVENT_PROMPT = (
@@ -134,6 +173,12 @@ UNGROUNDED_ACCURACY_RULE = (
     "invented detail about how)."
 )
 
+SUBSCRIBE_CTAS = [
+    "Follow for a new unsolved case every day.",
+    "If this one got you, follow - there's a new case daily.",
+    "Follow for more cases like this one, every single day.",
+]
+
 SPEC = ChannelSpec(
     prompt_template=PROMPT_TEMPLATE,
     banned_phrases=BANNED_PHRASES,
@@ -143,6 +188,8 @@ SPEC = ChannelSpec(
     use_grounding=True,
     grounded_accuracy_rule=GROUNDED_ACCURACY_RULE,
     ungrounded_accuracy_rule=UNGROUNDED_ACCURACY_RULE,
+    subscribe_ctas=SUBSCRIBE_CTAS,
+    cta_keyword="dark mysterious night silhouette",
 )
 
 

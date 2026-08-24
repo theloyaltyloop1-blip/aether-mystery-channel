@@ -6,7 +6,33 @@ prompt differ per channel.
 """
 import json
 import os
+import re
 import requests
+
+# once a channel exhausts its seed list, invented topics come from a small
+# local model that turned out to have a narrow "favorites list" - it kept
+# re-suggesting the same handful of famous cases (the Dyatlov Pass incident
+# alone was invented and published 11 times) with just enough wording
+# variation to slip past an exact-string duplicate check. This normalizes
+# and compares by shared significant words instead, so "the SS Central
+# America disappearance" and "disappearance of SS Central America." are
+# caught as the same topic.
+_TOPIC_STOPWORDS = {
+    "the", "a", "an", "of", "in", "on", "at", "over", "and", "or", "to",
+    "for", "with", "by", "why", "how", "what", "is", "are", "was", "were",
+}
+
+
+def _normalize_topic(topic: str) -> set[str]:
+    words = re.findall(r"[a-z0-9']+", topic.lower())
+    return {w for w in words if w not in _TOPIC_STOPWORDS}
+
+
+def _too_similar(a: set[str], b: set[str]) -> bool:
+    if not a or not b:
+        return False
+    overlap = len(a & b) / min(len(a), len(b))
+    return overlap > 0.6
 
 
 def make_topic_picker(used_topics_file: str, seed_topics: list[str], invent_prompt: str):
@@ -21,7 +47,7 @@ def make_topic_picker(used_topics_file: str, seed_topics: list[str], invent_prom
         with open(used_topics_file, "w") as f:
             json.dump(used, f, indent=2)
 
-    def _invent_topic(used: list[str]) -> str:
+    def _ask_model(used: list[str]) -> str:
         prompt = invent_prompt + "\nDo not suggest any of these already-covered topics:\n- " + "\n- ".join(used[-40:])
         resp = requests.post(
             "http://localhost:11434/api/generate",
@@ -30,6 +56,18 @@ def make_topic_picker(used_topics_file: str, seed_topics: list[str], invent_prom
         )
         resp.raise_for_status()
         return resp.json()["response"].strip().strip('"').split("\n")[0]
+
+    def _invent_topic(used: list[str]) -> str:
+        used_word_sets = [_normalize_topic(t) for t in used]
+        candidate = ""
+        for _ in range(5):
+            candidate = _ask_model(used)
+            candidate_words = _normalize_topic(candidate)
+            if not any(_too_similar(candidate_words, uw) for uw in used_word_sets):
+                return candidate
+        # gave up finding something distinct after 5 tries - use the last
+        # attempt anyway rather than looping forever or failing the run
+        return candidate
 
     def pick_topic() -> str:
         used = _load_used()
