@@ -24,6 +24,7 @@ from googleapiclient.http import MediaFileUpload
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 BASE_DIR = os.path.dirname(__file__)
 CLIENT_SECRET_FILE = os.path.join(BASE_DIR, "client_secret.json")
