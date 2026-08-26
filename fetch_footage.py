@@ -212,11 +212,28 @@ def download(url: str, dest_path: str) -> None:
         f.write(r.content)
 
 
+def _is_valid_image(image_path: str) -> bool:
+    """A search result occasionally points at something that isn't actually
+    a decodable image (an HTML error page served with an image content-type,
+    a truncated download, etc.) - this crashed video assembly later with
+    PIL.UnidentifiedImageError instead of just trying the next candidate."""
+    try:
+        with Image.open(image_path) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+
 def _download_first_good(candidates: list[dict], dest: str) -> dict | None:
     for item in candidates:
         try:
             download(item["url"], dest)
         except requests.RequestException:
+            continue
+        if not _is_valid_image(dest):
+            if os.path.exists(dest):
+                os.remove(dest)
             continue
         if _looks_like_checkerboard(dest) or _looks_too_blank(dest):
             os.remove(dest)
