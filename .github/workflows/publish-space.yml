@@ -1,12 +1,15 @@
 name: AETHER publish - space
 
-# 3x/day, offset from mystery (23/5/11/17 UTC) and philosophy (2/10/18 UTC)
-# so all three channels don't grab a runner at the same time.
+# 6x/day, offset from mystery (0/3/6/8/11/14/16/19/21/23 UTC) and philosophy
+# (2/10/18 UTC) so all three channels don't grab a runner at the same time.
 on:
   schedule:
-    - cron: "0 4 * * *"
-    - cron: "0 12 * * *"
-    - cron: "0 20 * * *"
+    - cron: "0 1 * * *"
+    - cron: "0 5 * * *"
+    - cron: "0 9 * * *"
+    - cron: "0 13 * * *"
+    - cron: "0 17 * * *"
+    - cron: "0 22 * * *"
   workflow_dispatch: {}
 
 permissions:
